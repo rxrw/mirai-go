@@ -11,9 +11,28 @@ import (
 
 type HttpSender struct {
 	sessionKey string
+	VerifyKey  string
+	QQ         int64
+	URL        string
 }
 
-func (h HttpSender) Send(method string, uri string, data interface{}) (interface{}, error) {
+func (h *HttpSender) SetSessionKey(sessionKey string) {
+	h.sessionKey = sessionKey
+}
+
+func (h HttpSender) Connect(ws chan Sender) error {
+	response := make(map[string]interface{})
+	h.Send("POST", "verify", map[string]string{
+		"verifyKey": h.VerifyKey,
+	}, &response)
+	if response["code"].(float64) != 0 {
+		return fmt.Errorf("code is not 0: %v", response["code"].(float64))
+	}
+	h.SetSessionKey(response["sessionKey"].(string))
+	return nil
+}
+
+func (h HttpSender) Send(method string, uri string, data interface{}, result interface{}) error {
 	client := http.DefaultClient
 	var r *http.Response
 	var err error
@@ -42,37 +61,53 @@ func (h HttpSender) Send(method string, uri string, data interface{}) (interface
 
 		r, err = client.Get(uri)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		defer r.Body.Close()
 	} else {
 		bytesData, err := json.Marshal(data)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		r, err = client.Post(uri, "application/json", bytes.NewReader(bytesData))
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 	if r.StatusCode != http.StatusOK {
-		return nil, errors.New(r.Status)
+		return errors.New(r.Status)
 	}
 	resp, err := io.ReadAll(r.Body)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	body := make(map[string]interface{})
-	json.Unmarshal(resp, &body)
+	json.Unmarshal(resp, &result)
+	body := result.(map[string]interface{})
 	if body["code"] != 0 {
-		return nil, errors.New(body["msg"].(string))
+		return errors.New(body["msg"].(string))
 	}
-	val, ok := body["data"]
+	result, ok := body["data"]
 	if !ok {
-		val, ok = body["messageId"]
+		result, ok = body["messageId"]
 		if !ok {
-			return nil, nil
+			return nil
 		}
 	}
-	return val, nil
+
+	return err
+}
+
+func NewHttpAdapter(URL string, verifyKey string, QQ int64) *HttpAdapter {
+	sender := HttpSender{
+		QQ:        QQ,
+		URL:       URL,
+		VerifyKey: verifyKey,
+	}
+	sender.Connect(nil)
+
+	httpServer := &HttpAdapter{
+		Sender: sender,
+	}
+
+	return httpServer
 }

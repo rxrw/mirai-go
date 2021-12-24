@@ -280,3 +280,9 @@ func (h GeneralAdapter) DealInvitedGroupEvent(req *dos.EventRequest) error {
 
 	return err
 }
+
+type HttpAdapter struct {
+	GeneralAdapter
+	Sender
+	// 特有方法
+}

@@ -131,7 +131,7 @@ func (w WebsocketSender) Send(method string, uri string, data interface{}, resul
 
 	err = w.ws.WriteJSON(req)
 	if err != nil {
-		return fmt.Errorf(" send request error: %v", err)
+		return fmt.Errorf("send request error: %v", err)
 	}
 
 	message := <-w.syncMessage
