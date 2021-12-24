@@ -7,13 +7,18 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reprover/mirai-go/dealers"
+	"reprover/mirai-go/dos"
 )
 
+// TODO HTTP應該定時取得消息發送給消息隊列
+// TODO Connect 是不是應該在adapter里？
 type HttpSender struct {
-	sessionKey string
-	VerifyKey  string
-	QQ         int64
-	URL        string
+	sessionKey    string
+	VerifyKey     string
+	QQ            int64
+	URL           string
+	MessageDealer dealers.MessageDealer
 }
 
 func (h *HttpSender) SetSessionKey(sessionKey string) {
@@ -21,6 +26,12 @@ func (h *HttpSender) SetSessionKey(sessionKey string) {
 }
 
 func (h HttpSender) Connect(ws chan Sender) error {
+	defer func() {
+		h.Send("POST", "release", map[string]interface{}{
+			"sessionKey": h.sessionKey,
+			"qq":         h.QQ,
+		}, nil)
+	}()
 	response := make(map[string]interface{})
 	h.Send("POST", "verify", map[string]string{
 		"verifyKey": h.VerifyKey,
@@ -29,10 +40,23 @@ func (h HttpSender) Connect(ws chan Sender) error {
 		return fmt.Errorf("code is not 0: %v", response["code"].(float64))
 	}
 	h.SetSessionKey(response["sessionKey"].(string))
+
+	h.Send("POST", "bind", map[string]interface{}{
+		"sessionKey": h.sessionKey,
+		"qq":         h.QQ,
+	}, &response)
+
+	if response["code"].(float64) != 0 {
+		return fmt.Errorf("bind code is not 0: %v", response["code"].(float64))
+	}
+
 	return nil
 }
 
 func (h HttpSender) Send(method string, uri string, data interface{}, result interface{}) error {
+	if result == nil {
+		result = map[string]interface{}{}
+	}
 	client := http.DefaultClient
 	var r *http.Response
 	var err error
@@ -57,7 +81,7 @@ func (h HttpSender) Send(method string, uri string, data interface{}, result int
 			}
 		}
 
-		uri := fmt.Sprintf("%s?%s", uri, values)
+		uri := fmt.Sprintf("/%s?%s", uri, values)
 
 		r, err = client.Get(uri)
 		if err != nil {
@@ -97,11 +121,56 @@ func (h HttpSender) Send(method string, uri string, data interface{}, result int
 	return err
 }
 
-func NewHttpAdapter(URL string, verifyKey string, QQ int64) *HttpAdapter {
+type HttpAdapter struct {
+	GeneralAdapter
+	Sender
+	// 特有方法
+}
+
+func (h HttpAdapter) CountMessage() (result int, err error) {
+	uri := "countMessage"
+	err = h.Send("GET", uri, nil, &result)
+	return
+}
+
+func (h HttpAdapter) FetchMessage(count int) (result []*dos.Message, err error) {
+	uri := "fetchMessage"
+	params := make(map[string]int)
+	params["count"] = count
+	err = h.Send("GET", uri, params, &result)
+	return
+}
+
+func (h HttpAdapter) FetchLatestMessage(count int) (result []*dos.Message, err error) {
+	uri := "fetchMessage"
+	params := make(map[string]int)
+	params["count"] = count
+	err = h.Send("GET", uri, params, &result)
+	return
+}
+
+func (h HttpAdapter) PeekMessage(count int) (result []*dos.Message, err error) {
+	uri := "fetchMessage"
+	params := make(map[string]int)
+	params["count"] = count
+	err = h.Send("GET", uri, params, &result)
+	return
+}
+
+func (h HttpAdapter) PeekLatestMessage(count int) (result []*dos.Message, err error) {
+	uri := "fetchMessage"
+	params := make(map[string]int)
+	params["count"] = count
+	err = h.Send("GET", uri, params, &result)
+	return
+}
+
+func NewHttpAdapter(URL string, verifyKey string, QQ int64, messageDealer dealers.MessageDealer) *HttpAdapter {
 	sender := HttpSender{
-		QQ:        QQ,
-		URL:       URL,
-		VerifyKey: verifyKey,
+		QQ:            QQ,
+		URL:           URL,
+		VerifyKey:     verifyKey,
+		MessageDealer: messageDealer,
 	}
 	sender.Connect(nil)
 
