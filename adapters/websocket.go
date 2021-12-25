@@ -27,6 +27,10 @@ type WebsocketSender struct {
 	MessageDealer dealers.MessageDealer
 }
 
+func (w WebsocketSender) GetDealer() dealers.MessageDealer {
+	return w.MessageDealer
+}
+
 func (w WebsocketSender) Connect(ws chan Sender) error {
 	var err error
 	u := url.URL{Scheme: "ws", Host: w.URL, RawQuery: fmt.Sprintf("verifyKey=%s&qq=%d", w.VerifyKey, w.QQ), Path: "/all"}

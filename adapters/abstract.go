@@ -1,6 +1,7 @@
 package adapters
 
 import (
+	"reprover/mirai-go/dealers"
 	"reprover/mirai-go/dos"
 )
 
@@ -79,4 +80,5 @@ type Method interface {
 type Sender interface {
 	Send(method string, uri string, data interface{}, result interface{}) error
 	Connect(ws chan Sender) error
+	GetDealer() dealers.MessageDealer
 }

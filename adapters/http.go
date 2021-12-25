@@ -9,16 +9,20 @@ import (
 	"net/http"
 	"reprover/mirai-go/dealers"
 	"reprover/mirai-go/dos"
+	"time"
 )
 
 // TODO HTTP應該定時取得消息發送給消息隊列
-// TODO Connect 是不是應該在adapter里？
 type HttpSender struct {
 	sessionKey    string
 	VerifyKey     string
 	QQ            int64
 	URL           string
 	MessageDealer dealers.MessageDealer
+}
+
+func (h HttpSender) GetDealer() dealers.MessageDealer {
+	return h.MessageDealer
 }
 
 func (h *HttpSender) SetSessionKey(sessionKey string) {
@@ -125,6 +129,24 @@ type HttpAdapter struct {
 	GeneralAdapter
 	Sender
 	// 特有方法
+}
+
+// 起定时队列
+func (h HttpAdapter) RangeMessage() {
+	dealer := h.Sender.GetDealer()
+	if dealer != nil {
+		go func() {
+			for range time.Tick(time.Minute) {
+				count, _ := h.CountMessage()
+				if count > 0 {
+					messages, _ := h.FetchMessage(count + 10)
+					for _, message := range messages {
+						dealer.MessageDeal(*message)
+					}
+				}
+			}
+		}()
+	}
 }
 
 func (h HttpAdapter) CountMessage() (result int, err error) {
