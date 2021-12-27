@@ -2,7 +2,7 @@ package adapters
 
 import (
 	"fmt"
-	"reprover/mirai-go/dos"
+	"rxrw/mirai-go/dos"
 
 	"github.com/goinggo/mapstructure"
 )

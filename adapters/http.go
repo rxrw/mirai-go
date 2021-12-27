@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"reprover/mirai-go/dealers"
-	"reprover/mirai-go/dos"
+	"rxrw/mirai-go/dealers"
+	"rxrw/mirai-go/dos"
 	"time"
 
 	"github.com/goinggo/mapstructure"

@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"reprover/mirai-go/adapters"
-	"reprover/mirai-go/dos"
+	"rxrw/mirai-go/adapters"
+	"rxrw/mirai-go/dos"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 
 }
 
-// Dealer 需要实现 reprover/dealers/MessageDealer 接口
+// Dealer 需要实现 rxrw/dealers/MessageDealer 接口
 type Dealer struct {
 }
 

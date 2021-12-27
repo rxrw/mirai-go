@@ -6,7 +6,7 @@ lastmod: '2021-12-27T08:56:06.723Z'
 ## 安装
 
 ```bash
-go get github.com/reprover/mirai-go
+go get github.com/rxrw/mirai-go
 ```
 
 ## 说明
@@ -30,7 +30,7 @@ MIRAI-HTTP-API 的 GOLANG-SDK
 websocket 服务端会主动推送消息，用 dealer 处理
 http 如果注册了dealer，会每分钟获取一次消息，上限1000条。
 
-发送消息的结构都定义好了，推送消息会解析为 reprover/mirai-go/dos/Message 对象
+发送消息的结构都定义好了，推送消息会解析为 rxrw/mirai-go/dos/Message 对象
 
 好累
 

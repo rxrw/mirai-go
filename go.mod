@@ -1,4 +1,4 @@
-module reprover/mirai-go
+module rxrw/mirai-go
 
 go 1.17
 

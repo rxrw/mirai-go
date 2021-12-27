@@ -1,6 +1,6 @@
 package dealers
 
-import "reprover/mirai-go/dos"
+import "rxrw/mirai-go/dos"
 
 type MessageDealer interface {
 	MessageDeal(message dos.Message)
