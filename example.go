@@ -10,14 +10,14 @@ func main() {
 
 	dealer := Dealer{}
 
-	websocketServer := adapters.NewWebsocketAdapter("crti.cn:18081", "CNMCNMQQ1", 2337935952, dealer)
-	// httpServer := adapters.NewHttpAdapter("http://crti.cn:18080", "CNMCNMQQ1", 2337935952, dealer)
-	fmt.Println(websocketServer.FriendInfo(460514723))
+	websocketServer := adapters.NewWebsocketAdapter("127.0.0.1:18081", "verifyKey", 1233456, dealer)
+	// httpServer := adapters.NewHttpAdapter("127.0.0.1:18081", "verifyKey", 1233456, dealer)
+	fmt.Println(websocketServer.FriendInfo(7788990))
 	// fmt.Println(httpServer.FriendMessage(dos.FriendMessageRequest{
 	// 	GeneralMessage: dos.GeneralMessage{
-	// 		Target: 460514723,
+	// 		Target: 789999888,
 	// 		MessageChain: []interface{}{
-	// 			dos.NewPlainMessageChain("ces"),
+	// 			dos.NewPlainMessageChain("测试"),
 	// 		},
 	// 	},
 	// }))
@@ -27,6 +27,7 @@ func main() {
 
 }
 
+// Dealer 需要实现 reprover/dealers/MessageDealer 接口
 type Dealer struct {
 }
 
