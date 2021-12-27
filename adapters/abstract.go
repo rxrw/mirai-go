@@ -1,8 +1,8 @@
 package adapters
 
 import (
-	"rxrw/mirai-go/dealers"
-	"rxrw/mirai-go/dos"
+	"github.com/rxrw/mirai-go/dealers"
+	"github.com/rxrw/mirai-go/dos"
 )
 
 type Method interface {

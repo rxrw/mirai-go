@@ -1,4 +1,4 @@
-module rxrw/mirai-go
+module github.com/rxrw/mirai-go
 
 go 1.17
 

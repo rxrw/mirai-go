@@ -7,10 +7,11 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"rxrw/mirai-go/dealers"
-	"rxrw/mirai-go/dos"
 	"strings"
 	"time"
+
+	"github.com/rxrw/mirai-go/dealers"
+	"github.com/rxrw/mirai-go/dos"
 
 	"github.com/goinggo/mapstructure"
 	"github.com/gorilla/websocket"

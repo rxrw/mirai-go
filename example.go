@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"rxrw/mirai-go/adapters"
-	"rxrw/mirai-go/dos"
+
+	"github.com/rxrw/mirai-go/adapters"
+	"github.com/rxrw/mirai-go/dos"
 )
 
 func main() {
