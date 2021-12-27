@@ -78,7 +78,7 @@ type Method interface {
 }
 
 type Sender interface {
-	Send(method string, uri string, data interface{}, result interface{}) error
+	Send(method string, uri string, data interface{}) (interface{}, error)
 	Connect(ws chan Sender) error
 	GetDealer() dealers.MessageDealer
 }

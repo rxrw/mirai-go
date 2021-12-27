@@ -10,9 +10,10 @@ import (
 	"reprover/mirai-go/dealers"
 	"reprover/mirai-go/dos"
 	"time"
+
+	"github.com/goinggo/mapstructure"
 )
 
-// TODO HTTP應該定時取得消息發送給消息隊列
 type HttpSender struct {
 	sessionKey    string
 	VerifyKey     string
@@ -30,25 +31,23 @@ func (h *HttpSender) SetSessionKey(sessionKey string) {
 }
 
 func (h HttpSender) Connect(ws chan Sender) error {
-	defer func() {
-		h.Send("POST", "release", map[string]interface{}{
-			"sessionKey": h.sessionKey,
-			"qq":         h.QQ,
-		}, nil)
-	}()
-	response := make(map[string]interface{})
-	h.Send("POST", "verify", map[string]string{
+	responseBody, err := h.Send("POST", "verify", map[string]string{
 		"verifyKey": h.VerifyKey,
-	}, &response)
+	})
+	if err != nil {
+		return err
+	}
+	response := responseBody.(map[string]interface{})
 	if response["code"].(float64) != 0 {
 		return fmt.Errorf("code is not 0: %v", response["code"].(float64))
 	}
-	h.SetSessionKey(response["sessionKey"].(string))
+
+	h.SetSessionKey(response["session"].(string))
 
 	h.Send("POST", "bind", map[string]interface{}{
 		"sessionKey": h.sessionKey,
 		"qq":         h.QQ,
-	}, &response)
+	})
 
 	if response["code"].(float64) != 0 {
 		return fmt.Errorf("bind code is not 0: %v", response["code"].(float64))
@@ -57,13 +56,18 @@ func (h HttpSender) Connect(ws chan Sender) error {
 	return nil
 }
 
-func (h HttpSender) Send(method string, uri string, data interface{}, result interface{}) error {
-	if result == nil {
-		result = map[string]interface{}{}
-	}
+func (h HttpSender) Close() {
+	h.Send("POST", "release", map[string]interface{}{
+		"sessionKey": h.sessionKey,
+		"qq":         h.QQ,
+	})
+}
+
+func (h HttpSender) Send(method string, uri string, data interface{}) (interface{}, error) {
 	client := http.DefaultClient
 	var r *http.Response
 	var err error
+	uri = fmt.Sprintf("%s/%s", h.URL, uri)
 	if method == "GET" {
 		values := "sessionKey=" + h.sessionKey
 		if data != nil {
@@ -85,49 +89,47 @@ func (h HttpSender) Send(method string, uri string, data interface{}, result int
 			}
 		}
 
-		uri := fmt.Sprintf("/%s?%s", uri, values)
+		uri := fmt.Sprintf("%s?%s", uri, values)
 
 		r, err = client.Get(uri)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		defer r.Body.Close()
 	} else {
 		bytesData, err := json.Marshal(data)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		r, err = client.Post(uri, "application/json", bytes.NewReader(bytesData))
 		if err != nil {
-			return err
-		}
-	}
-	if r.StatusCode != http.StatusOK {
-		return errors.New(r.Status)
-	}
-	resp, err := io.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	json.Unmarshal(resp, &result)
-	body := result.(map[string]interface{})
-	if body["code"] != 0 {
-		return errors.New(body["msg"].(string))
-	}
-	result, ok := body["data"]
-	if !ok {
-		result, ok = body["messageId"]
-		if !ok {
-			return nil
+			return nil, err
 		}
 	}
 
-	return err
+	defer r.Body.Close()
+	if r.StatusCode != http.StatusOK {
+		return nil, errors.New(r.Status)
+	}
+	resp, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+	body := make(map[string]interface{})
+	json.Unmarshal(resp, &body)
+
+	if body["code"].(float64) != 0 {
+		return body, errors.New(body["msg"].(string))
+	}
+	result, ok := body["data"].(map[string]interface{})
+	if !ok {
+		return body, err
+	}
+
+	return result, err
 }
 
 type HttpAdapter struct {
 	GeneralAdapter
-	Sender
 	// 特有方法
 }
 
@@ -141,7 +143,7 @@ func (h HttpAdapter) RangeMessage() {
 				if count > 0 {
 					messages, _ := h.FetchMessage(count + 10)
 					for _, message := range messages {
-						dealer.MessageDeal(*message)
+						dealer.MessageDeal(message)
 					}
 				}
 			}
@@ -149,42 +151,69 @@ func (h HttpAdapter) RangeMessage() {
 	}
 }
 
-func (h HttpAdapter) CountMessage() (result int, err error) {
+func (h HttpAdapter) CountMessage() (int, error) {
 	uri := "countMessage"
-	err = h.Send("GET", uri, nil, &result)
-	return
+	result, err := h.Send("GET", uri, nil)
+	if err != nil {
+		return 0, err
+	}
+	return int(result.(map[string]interface{})["data"].(float64)), nil
 }
 
-func (h HttpAdapter) FetchMessage(count int) (result []*dos.Message, err error) {
+func (h HttpAdapter) FetchMessage(count int) ([]dos.Message, error) {
 	uri := "fetchMessage"
 	params := make(map[string]int)
 	params["count"] = count
-	err = h.Send("GET", uri, params, &result)
-	return
+	result, err := h.Send("GET", uri, params)
+	if err != nil {
+		return nil, err
+	}
+	result = result.(map[string]interface{})["data"]
+	var res []dos.Message
+	mapstructure.Decode(result, &res)
+	return res, err
 }
 
-func (h HttpAdapter) FetchLatestMessage(count int) (result []*dos.Message, err error) {
+func (h HttpAdapter) FetchLatestMessage(count int) ([]dos.Message, error) {
 	uri := "fetchMessage"
 	params := make(map[string]int)
 	params["count"] = count
-	err = h.Send("GET", uri, params, &result)
-	return
+	result, err := h.Send("GET", uri, params)
+	if err != nil {
+		return nil, err
+	}
+	result = result.(map[string]interface{})["data"]
+	var res []dos.Message
+	mapstructure.Decode(result, &res)
+	return res, err
 }
 
-func (h HttpAdapter) PeekMessage(count int) (result []*dos.Message, err error) {
+func (h HttpAdapter) PeekMessage(count int) ([]dos.Message, error) {
 	uri := "fetchMessage"
 	params := make(map[string]int)
 	params["count"] = count
-	err = h.Send("GET", uri, params, &result)
-	return
+	result, err := h.Send("GET", uri, params)
+	if err != nil {
+		return nil, err
+	}
+	var res []dos.Message
+	result = result.(map[string]interface{})["data"]
+	mapstructure.Decode(result, &res)
+	return res, err
 }
 
-func (h HttpAdapter) PeekLatestMessage(count int) (result []*dos.Message, err error) {
+func (h HttpAdapter) PeekLatestMessage(count int) ([]dos.Message, error) {
 	uri := "fetchMessage"
 	params := make(map[string]int)
 	params["count"] = count
-	err = h.Send("GET", uri, params, &result)
-	return
+	result, err := h.Send("GET", uri, params)
+	if err != nil {
+		return nil, err
+	}
+	result = result.(map[string]interface{})["data"]
+	var res []dos.Message
+	mapstructure.Decode(result, &res)
+	return res, err
 }
 
 func NewHttpAdapter(URL string, verifyKey string, QQ int64, messageDealer dealers.MessageDealer) *HttpAdapter {
@@ -196,9 +225,15 @@ func NewHttpAdapter(URL string, verifyKey string, QQ int64, messageDealer dealer
 	}
 	sender.Connect(nil)
 
-	httpServer := &HttpAdapter{
-		Sender: sender,
+	httpAdapter := &HttpAdapter{
+		GeneralAdapter{
+			Sender: sender,
+		},
 	}
 
-	return httpServer
+	if messageDealer != nil {
+		httpAdapter.RangeMessage()
+	}
+
+	return httpAdapter
 }

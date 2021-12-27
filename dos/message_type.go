@@ -31,7 +31,7 @@ type AtAllMessageChain struct {
 
 type FaceMessageChain struct {
 	AbstractMessageChain
-	FaceID int64  `json:"faceId"`
+	FaceID int    `json:"faceId"`
 	Name   string `json:"name"`
 }
 
@@ -124,4 +124,69 @@ type FileMessageChain struct {
 type MiraiCodeMessageChain struct {
 	AbstractMessageChain
 	Code string `json:"code"`
+}
+
+func NewAbstractMessageChain(Type string) AbstractMessageChain {
+	return AbstractMessageChain{
+		Type: Type,
+	}
+}
+
+func NewPlainMessageChain(text string) PlainMessageChain {
+	return PlainMessageChain{
+		AbstractMessageChain: NewAbstractMessageChain("Plain"),
+		Text:                 text,
+	}
+}
+
+func NewAtMessageChain(target int64) AtMessageChain {
+	return AtMessageChain{
+		AbstractMessageChain: NewAbstractMessageChain("At"),
+		Target:               target,
+	}
+}
+
+func NewAtAllMessageChain() AtAllMessageChain {
+	return AtAllMessageChain{
+		AbstractMessageChain: NewAbstractMessageChain("AtAll"),
+	}
+}
+
+func NewFaceMessageChain(faceId int, name string) FaceMessageChain {
+	return FaceMessageChain{
+		AbstractMessageChain: NewAbstractMessageChain("Face"),
+		FaceID:               faceId,
+		Name:                 name,
+	}
+}
+
+func NewImageMessageChain(imageId string, url string, path string, base64 string) ImageMessageChain {
+	return ImageMessageChain{
+		AbstractMessageChain: NewAbstractMessageChain("Image"),
+		ImageID:              imageId,
+		URL:                  url,
+		Path:                 path,
+		Base64:               base64,
+	}
+}
+
+func NewVocieMessageChain(vocieId string, url string, path string, base64 string) VoiceMessageChain {
+	return VoiceMessageChain{
+		AbstractMessageChain: NewAbstractMessageChain("Voice"),
+		VoiceID:              vocieId,
+		URL:                  url,
+		Path:                 path,
+		Base64:               base64,
+	}
+}
+
+func NewFlashImageMessageChain(imageId string, url string, path string, base64 string) FlashImageMessageChain {
+	return FlashImageMessageChain{
+		ImageMessageChain: ImageMessageChain{
+			AbstractMessageChain: NewAbstractMessageChain("FlashImage"),
+			ImageID:              imageId,
+			URL:                  url,
+			Path:                 path,
+			Base64:               base64},
+	}
 }

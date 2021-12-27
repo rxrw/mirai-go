@@ -1,7 +1,6 @@
 package adapters
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -13,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/goinggo/mapstructure"
 	"github.com/gorilla/websocket"
 )
 
@@ -95,34 +95,30 @@ func (w WebsocketSender) ConsumeMessage() {
 
 // UnmarshalMessage unmarshals a websocket message into struct
 func (w WebsocketSender) UnmarshalMessage(message WebsocketResponse) error {
-	log.Printf("receive message from unmarshal:%v\n", message)
 	syncID := message.SyncID
 	if syncID != "-1" {
 		// 说明是之前请求留下的，想想怎么办
 		w.syncMessage <- message
 		return nil
 	}
-	data := message.Data.(map[string]interface{})
-
-	d, _ := json.Marshal(data)
-	// 事件推送
-	fmt.Printf("its a -1 message non session: %s", string(d))
-
 	// 这里接事件处理器
 	if w.MessageDealer == nil {
 		return errors.New("no dealer registered")
 	}
 
+	data := message.Data.(map[string]interface{})
+
 	newMessage := dos.Message{}
 
-	json.Unmarshal(d, &newMessage)
+	mapstructure.Decode(data, &newMessage)
+	// 事件推送
 
 	w.MessageDealer.MessageDeal(newMessage)
 	return nil
 }
 
 //以 HTTP 为例
-func (w WebsocketSender) Send(method string, uri string, data interface{}, result interface{}) error {
+func (w WebsocketSender) Send(method string, uri string, data interface{}) (interface{}, error) {
 	syncID := time.Now().String()
 
 	var err error
@@ -135,20 +131,18 @@ func (w WebsocketSender) Send(method string, uri string, data interface{}, resul
 
 	err = w.ws.WriteJSON(req)
 	if err != nil {
-		return fmt.Errorf("send request error: %v", err)
+		return nil, fmt.Errorf("send request error: %v", err)
 	}
 
 	message := <-w.syncMessage
 	if message.SyncID != syncID {
 		w.syncMessage <- message
-		return fmt.Errorf("non same syncId")
+		return nil, fmt.Errorf("non same syncId")
 	}
 
-	jsonData, _ := json.Marshal(message.Data)
+	body := message.Data.(map[string]interface{})
 
-	json.Unmarshal(jsonData, &result)
-
-	return err
+	return body, err
 
 }
 

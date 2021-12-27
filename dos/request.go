@@ -21,6 +21,11 @@ type GroupMessageRequest struct {
 	Group int64 `json:"group"`
 }
 
+func (g *GeneralMessage) AddChain(chain interface{}) *GeneralMessage {
+	g.MessageChain = append(g.MessageChain, chain)
+	return g
+}
+
 type TempMessageRequest struct {
 	GeneralRequest
 	QQ           int64         `json:"qq"`
