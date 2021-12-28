@@ -177,7 +177,7 @@ func (h GeneralAdapter) ReplyMessage(origin dos.Message, addQuote bool, message 
 	if !addQuote {
 		quote = 0
 	} else {
-		quote = origin.GetQuoteId()
+		quote = origin.GetMessageId()
 	}
 	if origin.IsType(dos.FRIEND) {
 		return h.FriendMessage(int64(origin.Sender["id"].(float64)), quote, message)

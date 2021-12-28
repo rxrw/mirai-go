@@ -2,17 +2,18 @@ package main
 
 import (
 	"fmt"
+	"github.com/rxrw/mirai-go/adapters"
 
 	"github.com/rxrw/mirai-go/dos"
 )
 
 func main() {
 
-	//dealer := Dealer{}
+	dealer := Dealer{}
 
-	//websocketServer := adapters.NewWebsocketAdapter("127.0.0.1:18081", "verifyKey", 1233456, dealer)
+	websocketServer := adapters.NewWebsocketAdapter("127.0.0.1:18081", "VERIFY_KEY", 123456789, dealer)
 	//httpServer := adapters.NewHttpAdapter("127.0.0.1:18081", "verifyKey", 1233456, dealer)
-	//fmt.Println(websocketServer.FriendInfo(7788990))
+	fmt.Println(websocketServer.FriendInfo(7788990))
 	//fmt.Println(httpServer.FriendMessage(dos.FriendMessageRequest{
 	//	GeneralMessage: dos.GeneralMessage{
 	//		Target: 789999888,
@@ -31,6 +32,7 @@ func main() {
 type Dealer struct {
 }
 
-func (d Dealer) MessageDeal(message dos.Message) {
+func (d Dealer) MessageDeal(message dos.Message) interface{} {
 	fmt.Println("it's a message:", message)
+	return "回复"
 }

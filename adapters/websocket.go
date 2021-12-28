@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-	"os"
-	"os/signal"
 	"strings"
 	"time"
 
@@ -17,14 +15,17 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+var (
+	message     chan WebsocketResponse
+	syncMessage chan WebsocketResponse
+	ws          *websocket.Conn
+)
+
 type WebsocketSender struct {
 	sessionKey    string
 	URL           string
 	VerifyKey     string
 	QQ            int64
-	ws            *websocket.Conn
-	message       chan WebsocketResponse
-	syncMessage   chan WebsocketResponse
 	MessageDealer dealers.MessageDealer
 }
 
@@ -32,90 +33,19 @@ func (w WebsocketSender) GetDealer() dealers.MessageDealer {
 	return w.MessageDealer
 }
 
-func (w WebsocketSender) Connect(ws chan Sender) error {
+func (w WebsocketSender) Connect(senderChan chan Sender) error {
 	var err error
 	u := url.URL{Scheme: "ws", Host: w.URL, RawQuery: fmt.Sprintf("verifyKey=%s&qq=%d", w.VerifyKey, w.QQ), Path: "/all"}
-	w.ws, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
+	ws, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		return err
 	}
 
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-
-	w.message = make(chan WebsocketResponse)
-	w.syncMessage = make(chan WebsocketResponse)
-
-	go w.WaitingMessage()
-
-	go w.ConsumeMessage()
-
-	ws <- w
-
-	for range interrupt {
-		w.ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseAbnormalClosure, ""))
-	}
-
 	return nil
 }
 
-//message 的生产队列
-func (w WebsocketSender) WaitingMessage() {
-	message := WebsocketResponse{}
-	for {
-		err := w.ws.ReadJSON(&message)
-		if err != nil {
-			continue
-		}
-		w.message <- message
-	}
-}
-
-func (w WebsocketSender) ConsumeMessage() {
-	for message := range w.message {
-		if w.sessionKey != "" {
-			w.UnmarshalMessage(message)
-			continue
-		}
-		k := message.Data.(map[string]interface{})
-		code, exists := k["code"]
-		if !exists {
-			w.UnmarshalMessage(message)
-			continue
-		}
-		if code.(float64) != 0 {
-			log.Printf("code is not 0: %d", k["code"])
-			continue
-		}
-		session, ok := k["session"]
-		if ok {
-			w.sessionKey = session.(string)
-		}
-	}
-}
-
-// UnmarshalMessage unmarshals a websocket message into struct
-func (w WebsocketSender) UnmarshalMessage(message WebsocketResponse) error {
-	syncID := message.SyncID
-	if syncID != "-1" {
-		// 说明是之前请求留下的，想想怎么办
-		w.syncMessage <- message
-		return nil
-	}
-	// 这里接事件处理器
-	if w.MessageDealer == nil {
-		return errors.New("no dealer registered")
-	}
-
-	data := message.Data.(map[string]interface{})
-
-	newMessage := dos.Message{}
-
-	mapstructure.Decode(data, &newMessage)
-	// 事件推送
-
-	w.MessageDealer.MessageDeal(newMessage)
-	return nil
+func (w WebsocketSender) Close() error {
+	return ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseAbnormalClosure, ""))
 }
 
 //以 HTTP 为例
@@ -130,14 +60,14 @@ func (w WebsocketSender) Send(method string, uri string, data interface{}) (inte
 		Content:    data,
 	}
 
-	err = w.ws.WriteJSON(req)
+	err = ws.WriteJSON(req)
 	if err != nil {
 		return nil, fmt.Errorf("send request error: %v", err)
 	}
 
-	message := <-w.syncMessage
+	message := <-syncMessage
 	if message.SyncID != syncID {
-		w.syncMessage <- message
+		syncMessage <- message
 		return nil, fmt.Errorf("non same syncId")
 	}
 
@@ -159,21 +89,96 @@ type WebsocketResponse struct {
 	Data   interface{} `json:"data"`
 }
 
-func NewWebsocketAdapter(URL string, verifyKey string, QQ int64, messageDealer dealers.MessageDealer) *GeneralAdapter {
-	ws := make(chan Sender)
+type WebsocketAdapter struct {
+	GeneralAdapter
+}
+
+//WaitingMessage 的生产队列
+func (w WebsocketAdapter) WaitingMessage() {
+	messageBody := WebsocketResponse{}
+	for {
+		err := ws.ReadJSON(&messageBody)
+		if err != nil {
+			continue
+		}
+		message <- messageBody
+	}
+}
+
+func (w WebsocketAdapter) ConsumeMessage() {
+	for message := range message {
+		if w.sessionKey != "" {
+			w.UnmarshalMessage(message)
+			continue
+		}
+		k := message.Data.(map[string]interface{})
+		code, exists := k["code"]
+		if !exists {
+			w.UnmarshalMessage(message)
+			continue
+		}
+		if code.(float64) != 0 {
+			log.Printf("code is not 0: %d", k["code"])
+			continue
+		}
+		session, ok := k["session"]
+		if ok {
+			w.sessionKey = session.(string)
+		}
+	}
+}
+
+// UnmarshalMessage unmarshal a websocket message into struct
+func (w WebsocketAdapter) UnmarshalMessage(message WebsocketResponse) error {
+	syncID := message.SyncID
+	if syncID != "-1" {
+		// 说明是之前请求留下的，想想怎么办
+		syncMessage <- message
+		return nil
+	}
+	// 这里接事件处理器
+	if w.Sender.GetDealer() == nil {
+		return errors.New("no dealer registered")
+	}
+
+	data := message.Data.(map[string]interface{})
+
+	newMessage := dos.Message{}
+
+	mapstructure.Decode(data, &newMessage)
+	// 事件推送
+
+	result := w.Sender.GetDealer().MessageDeal(newMessage)
+
+	switch v := result.(type) {
+	case string:
+		// 直接回复消息
+		w.ReplyMessage(newMessage, true, []interface{}{dos.NewPlainMessageChain(v)})
+	}
+	return nil
+}
+func NewWebsocketAdapter(URL string, verifyKey string, QQ int64, messageDealer dealers.MessageDealer) *WebsocketAdapter {
 	sender := WebsocketSender{
 		QQ:            QQ,
 		URL:           URL,
 		VerifyKey:     verifyKey,
 		MessageDealer: messageDealer,
 	}
-	go sender.Connect(ws)
 
-	res := <-ws
+	message = make(chan WebsocketResponse)
+	syncMessage = make(chan WebsocketResponse)
 
-	websocketServer := &GeneralAdapter{
-		Sender: res,
+	sender.Connect(nil)
+
+	websocketServer := &WebsocketAdapter{
+		GeneralAdapter: GeneralAdapter{
+			Sender: sender,
+		},
 	}
+
+	go websocketServer.WaitingMessage()
+
+	go websocketServer.ConsumeMessage()
 
 	return websocketServer
 }

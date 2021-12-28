@@ -5,12 +5,12 @@ import (
 	"time"
 )
 
-// 插件信息
+// PluginInfo 插件信息
 type PluginInfo struct {
 	Version string `json:"version"`
 }
 
-// 群简单
+// Group 群简单
 type Group struct {
 	ID         int64  `json:"id"`
 	Name       string `json:"name"`
@@ -21,14 +21,14 @@ type AbstractUser struct {
 	ID int `json:"id"`
 }
 
-// 用户简单 Sender
+// User 用户简单 Sender
 type User struct {
 	AbstractUser
 	Nickname string `json:"nickname"`
 	Remark   string `json:"remark"`
 }
 
-// 群成员信息 Sender
+// GroupMember 群成员信息 Sender
 type GroupMember struct {
 	AbstractUser
 	MemberName         string `json:"memberName"`
@@ -40,13 +40,13 @@ type GroupMember struct {
 	Group              Group  `json:"group"`
 }
 
-// 不同客户端 Sender
+// Client 不同客户端 Sender
 type Client struct {
 	AbstractUser
 	Platform string `json:"platform"`
 }
 
-// 用户信息
+// UserInfo 用户信息
 type UserInfo struct {
 	Nickname string `json:"nickname"`
 	Email    string `json:"email"`
@@ -56,7 +56,7 @@ type UserInfo struct {
 	Sex      string `json:"sex"`
 }
 
-// 文件信息
+// FileInfo 文件信息
 type FileInfo struct {
 	Name         string        `json:"name"`
 	ID           string        `json:"id"`
@@ -68,7 +68,7 @@ type FileInfo struct {
 	DownloadInfo *DownloadInfo `json:"downloadInfo"`
 }
 
-// 文件下载信息
+// DownloadInfo 文件下载信息
 type DownloadInfo struct {
 	Sha1           string `json:"sha1"`
 	Md5            string `json:"md5"`
@@ -79,7 +79,7 @@ type DownloadInfo struct {
 	URL            string `json:"url"`
 }
 
-// 群设置
+// GroupSetting 群设置
 type GroupSetting struct {
 	Name              string `json:"name"`
 	Announcement      string `json:"announcement"`
@@ -158,6 +158,7 @@ func (m Message) GetPlainMessage() string {
 	return content
 }
 
+// GetMessageSentAt 消息发送时间
 func (m Message) GetMessageSentAt() time.Time {
 	for _, c := range m.MessageChain {
 		if c["type"].(string) == Source {
