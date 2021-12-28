@@ -15,7 +15,32 @@ const (
 )
 
 const (
-	GROUP    = "Group"
-	FRIEND   = "Friend"
-	STRANGER = "Stranger"
+	GROUP        = "GroupMessage"
+	FRIEND       = "FriendMessage"
+	STRANGER     = "StrangerMessage"
+	TEMP         = "TempMessage"
+	OTHER_CLIENT = "OtherClientMessage"
+)
+
+const (
+	Source         = "Source"
+	Quote          = "Quote"
+	At             = "At"
+	AtAll          = "AtAll"
+	Face           = "Face"
+	Plain          = "Plain"
+	Image          = "Image"
+	Voice          = "Voice"
+	FlashImage     = "FlashImage"
+	Xml            = "Xml"
+	Json           = "Json"
+	App            = "App"
+	Poke           = "Poke"
+	Dice           = "Dice"
+	MusicShare     = "MusicShare"
+	ForwardMessage = "ForwardMessage"
+	File           = "File"
+	MiraiCode      = "MiraiCode"
+
+	NUDGE = "Nudge"
 )

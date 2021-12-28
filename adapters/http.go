@@ -144,7 +144,12 @@ func (h HttpAdapter) RangeMessage() {
 				if count > 0 {
 					messages, _ := h.FetchMessage(count + 10)
 					for _, message := range messages {
-						dealer.MessageDeal(message)
+						result := dealer.MessageDeal(message)
+						switch v := result.(type) {
+						case string:
+							// 直接回复消息
+							h.ReplyMessage(message, true, []interface{}{dos.NewPlainMessageChain(v)})
+						}
 					}
 				}
 			}

@@ -3,25 +3,24 @@ package main
 import (
 	"fmt"
 
-	"github.com/rxrw/mirai-go/adapters"
 	"github.com/rxrw/mirai-go/dos"
 )
 
 func main() {
 
-	dealer := Dealer{}
+	//dealer := Dealer{}
 
-	websocketServer := adapters.NewWebsocketAdapter("127.0.0.1:18081", "verifyKey", 1233456, dealer)
-	// httpServer := adapters.NewHttpAdapter("127.0.0.1:18081", "verifyKey", 1233456, dealer)
-	fmt.Println(websocketServer.FriendInfo(7788990))
-	// fmt.Println(httpServer.FriendMessage(dos.FriendMessageRequest{
-	// 	GeneralMessage: dos.GeneralMessage{
-	// 		Target: 789999888,
-	// 		MessageChain: []interface{}{
-	// 			dos.NewPlainMessageChain("测试"),
-	// 		},
-	// 	},
-	// }))
+	//websocketServer := adapters.NewWebsocketAdapter("127.0.0.1:18081", "verifyKey", 1233456, dealer)
+	//httpServer := adapters.NewHttpAdapter("127.0.0.1:18081", "verifyKey", 1233456, dealer)
+	//fmt.Println(websocketServer.FriendInfo(7788990))
+	//fmt.Println(httpServer.FriendMessage(dos.FriendMessageRequest{
+	//	GeneralMessage: dos.GeneralMessage{
+	//		Target: 789999888,
+	//		MessageChain: []interface{}{
+	//			dos.NewPlainMessageChain("测试"),
+	//		},
+	//	},
+	//}))
 	// fmt.Println(httpServer.CountMessage())
 	// fmt.Printf("http server %v\n", httpServer.Sender)
 	select {}

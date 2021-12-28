@@ -30,6 +30,7 @@ type TempMessageRequest struct {
 	GeneralRequest
 	QQ           int64         `json:"qq"`
 	Group        int64         `json:"group"`
+	Quote        int64         `json:"quote"`
 	MessageChain []interface{} `json:"messageChain"`
 }
 
@@ -91,7 +92,7 @@ type GeneralGroupRequest struct {
 
 // 禁言
 type MuteMemberRequest struct {
-	GeneralRequest
+	GeneralGroupRequest
 	MemberID int64 `json:"memberId"`
 	Time     int   `json:"time"`
 }

@@ -1,8 +1,7 @@
 package adapters
 
 import (
-	"fmt"
-
+	"errors"
 	"github.com/rxrw/mirai-go/dos"
 
 	"github.com/goinggo/mapstructure"
@@ -18,6 +17,7 @@ func (h GeneralAdapter) About() (dos.PluginInfo, error) {
 	var res dos.PluginInfo
 	result, err := h.Send("GET", uri, nil)
 	mapstructure.Decode(result, &res)
+
 	return res, err
 }
 
@@ -104,11 +104,17 @@ func (h GeneralAdapter) GroupMemberInfo(target int64, memberID int64) (dos.UserI
 	return res, err
 }
 
-func (h GeneralAdapter) FriendMessage(message dos.FriendMessageRequest) (int, error) {
+func (h GeneralAdapter) FriendMessage(target int64, quote int64, messageChains []interface{}) (int64, error) {
 	uri := "sendFriendMessage"
+	message := dos.FriendMessageRequest{
+		GeneralMessage: dos.GeneralMessage{
+			Target:       target,
+			Quote:        quote,
+			MessageChain: messageChains,
+		},
+		QQ: target,
+	}
 	message.SessionKey = h.sessionKey
-
-	fmt.Println(h.Sender)
 
 	result, err := h.Send("POST", uri, message)
 
@@ -118,11 +124,19 @@ func (h GeneralAdapter) FriendMessage(message dos.FriendMessageRequest) (int, er
 		return 0, err
 	}
 
-	return int(messageBody.(float64)), err
+	return int64(messageBody.(float64)), err
 }
 
-func (h GeneralAdapter) GroupMessage(message dos.GroupMessageRequest) (int, error) {
+func (h GeneralAdapter) GroupMessage(target int64, quote int64, messageChains []interface{}) (int64, error) {
 	uri := "sendGroupMessage"
+	message := dos.GroupMessageRequest{
+		GeneralMessage: dos.GeneralMessage{
+			Target:       target,
+			Quote:        quote,
+			MessageChain: messageChains,
+		},
+		Group: target,
+	}
 	message.SessionKey = h.sessionKey
 
 	result, err := h.Send("POST", uri, message)
@@ -133,11 +147,18 @@ func (h GeneralAdapter) GroupMessage(message dos.GroupMessageRequest) (int, erro
 		return 0, err
 	}
 
-	return int(messageBody.(float64)), err
+	return int64(messageBody.(float64)), err
 }
 
-func (h GeneralAdapter) TempMessage(message dos.TempMessageRequest) (int, error) {
+func (h GeneralAdapter) TempMessage(group int64, qq int64, quote int64, messageChain []interface{}) (int64, error) {
 	uri := "sendTempMessage"
+	message := dos.TempMessageRequest{
+		QQ:           qq,
+		Group:        group,
+		MessageChain: messageChain,
+		Quote:        quote,
+	}
+
 	message.SessionKey = h.sessionKey
 
 	result, err := h.Send("POST", uri, message)
@@ -148,19 +169,44 @@ func (h GeneralAdapter) TempMessage(message dos.TempMessageRequest) (int, error)
 		return 0, err
 	}
 
-	return int(messageBody.(float64)), err
+	return int64(messageBody.(float64)), err
 }
 
-func (h GeneralAdapter) Nudge(message dos.NudgeMessageRequest) error {
+func (h GeneralAdapter) ReplyMessage(origin dos.Message, addQuote bool, message []interface{}) (int64, error) {
+	var quote int64
+	if !addQuote {
+		quote = 0
+	} else {
+		quote = origin.GetQuoteId()
+	}
+	if origin.IsType(dos.FRIEND) {
+		return h.FriendMessage(int64(origin.Sender["id"].(float64)), quote, message)
+	} else if origin.IsType(dos.GROUP) {
+		return h.GroupMessage(int64(origin.Sender["group"].(map[string]interface{})["id"].(float64)), quote, message)
+	} else if origin.IsType(dos.TEMP) {
+		return h.TempMessage(int64(origin.Sender["group"].(map[string]interface{})["id"].(float64)), int64(origin.Sender["id"].(float64)), quote, message)
+	}
+	return 0, errors.New("no suitable message type")
+}
+
+func (h GeneralAdapter) Nudge(target int64, subject int64, kind string) error {
 	uri := "sendNudge"
+	message := &dos.NudgeMessageRequest{
+		Target:  target,
+		Subject: subject,
+		Kind:    kind,
+	}
 	message.SessionKey = h.sessionKey
 	_, err := h.Send("POST", uri, message)
 
 	return err
 }
 
-func (h GeneralAdapter) Recall(message dos.GeneralMessageRequest) error {
+func (h GeneralAdapter) Recall(target int64) error {
 	uri := "recall"
+	message := &dos.GeneralMessageRequest{
+		Target: target,
+	}
 	message.SessionKey = h.sessionKey
 	_, err := h.Send("POST", uri, message)
 
@@ -227,64 +273,99 @@ func (h GeneralAdapter) RenameFile(req dos.RenameFileRequest) error {
 	return err
 }
 
-func (h GeneralAdapter) DeleteFriend(req dos.GeneralGroupRequest) error {
+func (h GeneralAdapter) DeleteFriend(target int64) error {
 	uri := "deleteFriend"
+	req := dos.GeneralGroupRequest{
+		Target: target,
+	}
 	req.SessionKey = h.sessionKey
 	_, err := h.Send("POST", uri, req)
 
 	return err
 }
 
-func (h GeneralAdapter) MuteGroupMember(req dos.MuteMemberRequest) error {
+func (h GeneralAdapter) MuteGroupMember(target int64, memberId int64, duration int) error {
 	uri := "mute"
+	req := dos.MuteMemberRequest{
+		GeneralGroupRequest: dos.GeneralGroupRequest{
+			Target: target,
+		},
+		MemberID: memberId,
+		Time:     duration,
+	}
 	req.SessionKey = h.sessionKey
 	_, err := h.Send("POST", uri, req)
 
 	return err
 }
 
-func (h GeneralAdapter) UnmuteGroupMember(req dos.UnmuteMemberRequest) error {
+func (h GeneralAdapter) UnmuteGroupMember(target int64, memberId int64) error {
 	uri := "unmute"
+	req := dos.UnmuteMemberRequest{
+		GeneralGroupRequest: dos.GeneralGroupRequest{
+			Target: target,
+		},
+		MemberID: memberId,
+	}
 	req.SessionKey = h.sessionKey
 	_, err := h.Send("POST", uri, req)
 
 	return err
 }
 
-func (h GeneralAdapter) KickGroupMember(req dos.KickMemberRequest) error {
+func (h GeneralAdapter) KickGroupMember(target int64, memberId int64) error {
 	uri := "kick"
+	req := dos.KickMemberRequest{
+		GeneralGroupRequest: dos.GeneralGroupRequest{
+			Target: target,
+		},
+		MemberID: memberId,
+	}
 	req.SessionKey = h.sessionKey
 	_, err := h.Send("POST", uri, req)
 
 	return err
 }
 
-func (h GeneralAdapter) QuitGroup(req dos.GeneralGroupRequest) error {
+func (h GeneralAdapter) QuitGroup(target int64) error {
 	uri := "quit"
+	req := dos.GeneralGroupRequest{
+		Target: target,
+	}
 	req.SessionKey = h.sessionKey
 	_, err := h.Send("POST", uri, req)
 
 	return err
 }
 
-func (h GeneralAdapter) MuteGroup(req dos.GeneralGroupRequest) error {
+func (h GeneralAdapter) MuteGroup(target int64) error {
 	uri := "muteAll"
+	req := dos.GeneralGroupRequest{
+		Target: target,
+	}
 	req.SessionKey = h.sessionKey
 	_, err := h.Send("POST", uri, req)
 
 	return err
 }
 
-func (h GeneralAdapter) UnmuteGroup(req dos.GeneralGroupRequest) error {
+func (h GeneralAdapter) UnmuteGroup(target int64) error {
 	uri := "unmuteAll"
+	req := dos.GeneralGroupRequest{
+		Target: target,
+	}
 	req.SessionKey = h.sessionKey
 	_, err := h.Send("POST", uri, req)
 
 	return err
 }
 
-func (h GeneralAdapter) EssenceGroup(req dos.GeneralGroupRequest) error {
+// EssenceGroup 设置群精华消息
+func (h GeneralAdapter) EssenceGroup(target int64) error {
 	uri := "setEssence"
+	req := dos.GeneralGroupRequest{
+		Target: target,
+	}
 	req.SessionKey = h.sessionKey
 	_, err := h.Send("POST", uri, req)
 
@@ -310,28 +391,43 @@ func (h GeneralAdapter) SetGroupSetting(req dos.SetGroupInfoRequest) error {
 	return err
 }
 
-func (h GeneralAdapter) GroupMemberSetting(target int64, memberID int64) (dos.MemberInfo, error) {
+func (h GeneralAdapter) GroupMemberSetting(target int64, memberID int64) (dos.UserInfo, error) {
 	uri := "memberInfo"
 	params := make(map[string]int64)
 	params["target"] = target
 	params["memberId"] = memberID
-	var res dos.MemberInfo
+	var res dos.UserInfo
 	result, err := h.Send("GET", uri, params)
 
 	mapstructure.Decode(result, &res)
 	return res, err
 }
 
-func (h GeneralAdapter) SetGroupMemberSetting(req dos.SetMemberInfo) error {
+func (h GeneralAdapter) SetGroupMemberSetting(target int64, memberID int64, nickname string, specialTitle string) error {
 	uri := "groupConfig"
+	req := dos.SetMemberInfo{
+		GeneralGroupRequest: dos.GeneralGroupRequest{Target: target},
+		MemberID:            memberID,
+		Info: dos.SetMemberInfoEntity{
+			Name:         nickname,
+			SpecialTitle: specialTitle,
+		},
+	}
 	req.SessionKey = h.sessionKey
 	_, err := h.Send("UPDATE", uri, req)
 
 	return err
 }
 
-func (h GeneralAdapter) MemberAdmin(req dos.SetGroupAdminRequest) error {
+func (h GeneralAdapter) MemberAdmin(target int64, memberID int64, assign bool) error {
 	uri := "memberAdmin"
+	req := dos.SetGroupAdminRequest{
+		GeneralGroupRequest: dos.GeneralGroupRequest{
+			Target: target,
+		},
+		MemberID: memberID,
+		Assign:   assign,
+	}
 	req.SessionKey = h.sessionKey
 	_, err := h.Send("POST", uri, req)
 
