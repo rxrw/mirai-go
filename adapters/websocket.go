@@ -106,15 +106,15 @@ func (w WebsocketAdapter) WaitingMessage() {
 }
 
 func (w WebsocketAdapter) ConsumeMessage() {
-	for message := range message {
+	for mess := range message {
 		if w.sessionKey != "" {
-			w.UnmarshalMessage(message)
+			w.UnmarshalMessage(mess)
 			continue
 		}
-		k := message.Data.(map[string]interface{})
+		k := mess.Data.(map[string]interface{})
 		code, exists := k["code"]
 		if !exists {
-			w.UnmarshalMessage(message)
+			w.UnmarshalMessage(mess)
 			continue
 		}
 		if code.(float64) != 0 {
