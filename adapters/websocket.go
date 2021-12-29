@@ -66,7 +66,6 @@ func (w WebsocketSender) Send(method string, uri string, data interface{}) (inte
 	}
 
 	mess := <-syncMessage
-	fmt.Println(mess)
 	if mess.SyncID != syncID {
 		syncMessage <- mess
 		return nil, fmt.Errorf("non same syncId")
