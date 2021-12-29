@@ -3,13 +3,13 @@ package adapters
 import (
 	"errors"
 	"fmt"
-	"log"
-	"net/url"
-	"strings"
-	"time"
-
 	"github.com/rxrw/mirai-go/dealers"
 	"github.com/rxrw/mirai-go/dos"
+	"log"
+	"math/rand"
+	"net/url"
+	"strconv"
+	"strings"
 
 	"github.com/goinggo/mapstructure"
 	"github.com/gorilla/websocket"
@@ -48,9 +48,9 @@ func (w WebsocketSender) Close() error {
 	return ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseAbnormalClosure, ""))
 }
 
-//以 HTTP 为例
+//Send 以 Websocket 为例
 func (w WebsocketSender) Send(method string, uri string, data interface{}) (interface{}, error) {
-	syncID := time.Now().String()
+	syncID := strconv.FormatInt(rand.Int63(), 10)
 
 	var err error
 	req := &WebsocketRequest{
@@ -66,6 +66,7 @@ func (w WebsocketSender) Send(method string, uri string, data interface{}) (inte
 	}
 
 	mess := <-syncMessage
+	fmt.Println(mess)
 	if mess.SyncID != syncID {
 		syncMessage <- mess
 		return nil, fmt.Errorf("non same syncId")
@@ -108,13 +109,13 @@ func (w WebsocketAdapter) WaitingMessage() {
 func (w WebsocketAdapter) ConsumeMessage() {
 	for mess := range message {
 		if w.sessionKey != "" {
-			w.UnmarshalMessage(mess)
+			go w.UnmarshalMessage(mess)
 			continue
 		}
 		k := mess.Data.(map[string]interface{})
 		code, exists := k["code"]
 		if !exists {
-			w.UnmarshalMessage(mess)
+			go w.UnmarshalMessage(mess)
 			continue
 		}
 		if code.(float64) != 0 {
