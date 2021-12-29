@@ -18,7 +18,7 @@ type Group struct {
 }
 
 type AbstractUser struct {
-	ID int `json:"id"`
+	ID int64 `json:"id"`
 }
 
 // User 用户简单 Sender
