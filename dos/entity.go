@@ -17,20 +17,16 @@ type Group struct {
 	Permission string `json:"permission"`
 }
 
-type AbstractUser struct {
-	ID int64 `json:"id"`
-}
-
 // User 用户简单 Sender
 type User struct {
-	AbstractUser
+	ID       int64  `json:"id"`
 	Nickname string `json:"nickname"`
 	Remark   string `json:"remark"`
 }
 
 // GroupMember 群成员信息 Sender
 type GroupMember struct {
-	AbstractUser
+	ID                 int64  `json:"id"`
 	MemberName         string `json:"memberName"`
 	SpecialTitle       string `json:"specialTitle"`
 	Permission         string `json:"permission"`
@@ -42,7 +38,7 @@ type GroupMember struct {
 
 // Client 不同客户端 Sender
 type Client struct {
-	AbstractUser
+	ID       int64  `json:"id"`
 	Platform string `json:"platform"`
 }
 
