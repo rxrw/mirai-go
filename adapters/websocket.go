@@ -3,13 +3,14 @@ package adapters
 import (
 	"errors"
 	"fmt"
-	"github.com/rxrw/mirai-go/dealers"
-	"github.com/rxrw/mirai-go/dos"
 	"log"
 	"math/rand"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/rxrw/mirai-go/dealers"
+	"github.com/rxrw/mirai-go/dos"
 
 	"github.com/goinggo/mapstructure"
 	"github.com/gorilla/websocket"
@@ -67,6 +68,7 @@ func (w WebsocketSender) Send(method string, uri string, data interface{}) (inte
 
 	mess := <-syncMessage
 	if mess.SyncID != syncID {
+		fmt.Printf("need syncID %s, got %s\n", syncID, mess.SyncID)
 		syncMessage <- mess
 		return nil, fmt.Errorf("non same syncId")
 	}
@@ -165,8 +167,8 @@ func NewWebsocketAdapter(URL string, verifyKey string, QQ int64, messageDealer d
 		MessageDealer: messageDealer,
 	}
 
-	message = make(chan WebsocketResponse)
-	syncMessage = make(chan WebsocketResponse)
+	message = make(chan WebsocketResponse, 10)
+	syncMessage = make(chan WebsocketResponse, 10)
 
 	sender.Connect(nil)
 
