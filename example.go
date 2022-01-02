@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/rxrw/mirai-go/adapters"
 
 	"github.com/rxrw/mirai-go/dos"
@@ -35,4 +36,8 @@ type Dealer struct {
 func (d Dealer) MessageDeal(message dos.Message) interface{} {
 	fmt.Println("it's a message:", message)
 	return "回复"
+}
+
+func (d Dealer) EventDeal(event map[string]interface{}) interface{} {
+	return nil
 }
