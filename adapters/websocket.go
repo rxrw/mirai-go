@@ -144,17 +144,18 @@ func (w WebsocketAdapter) UnmarshalMessage(message WebsocketResponse) error {
 
 	data := message.Data.(map[string]interface{})
 
-	newMessage := dos.Message{}
-
-	err := mapstructure.Decode(data, &newMessage)
+	_, ok := data["messageChain"].(string)
 
 	var result interface{}
 
-	if err != nil {
+	newMessage := dos.Message{}
+
+	if ok {
+		mapstructure.Decode(data, &newMessage)
+		result = w.Sender.GetDealer().MessageDeal(newMessage)
+	} else {
 		// 事件推送
 		result = w.Sender.GetDealer().EventDeal(data)
-	} else {
-		result = w.Sender.GetDealer().MessageDeal(newMessage)
 	}
 
 	switch v := result.(type) {
