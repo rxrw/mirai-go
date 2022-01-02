@@ -144,7 +144,7 @@ func (w WebsocketAdapter) UnmarshalMessage(message WebsocketResponse) error {
 
 	data := message.Data.(map[string]interface{})
 
-	_, ok := data["messageChain"].(string)
+	_, ok := data["messageChain"]
 
 	var result interface{}
 
