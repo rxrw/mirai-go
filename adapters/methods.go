@@ -2,6 +2,7 @@ package adapters
 
 import (
 	"errors"
+
 	"github.com/rxrw/mirai-go/dos"
 
 	"github.com/goinggo/mapstructure"
@@ -172,8 +173,11 @@ func (h GeneralAdapter) TempMessage(group int64, qq int64, quote int64, messageC
 	return int64(messageBody.(float64)), err
 }
 
-func (h GeneralAdapter) ReplyMessage(origin dos.Message, addQuote bool, message []interface{}) (int64, error) {
+func (h GeneralAdapter) ReplyMessage(origin *dos.Message, addQuote bool, message []interface{}) (int64, error) {
 	var quote int64
+	if origin == nil {
+		return 0, errors.New("origin is nil")
+	}
 	if !addQuote {
 		quote = 0
 	} else {

@@ -143,12 +143,20 @@ func (h HttpAdapter) RangeMessage() {
 				count, _ := h.CountMessage()
 				if count > 0 {
 					messages, _ := h.FetchMessage(count + 10)
+					var result interface{}
 					for _, message := range messages {
-						result := dealer.MessageDeal(message)
+						_, ok := message["messageChain"].(string)
+						var messageStr dos.Message
+						if ok {
+							mapstructure.Decode(message, &messageStr)
+							result = dealer.MessageDeal(messageStr)
+						} else {
+							result = dealer.EventDeal(message)
+						}
 						switch v := result.(type) {
 						case string:
 							// 直接回复消息
-							h.ReplyMessage(message, true, []interface{}{dos.NewPlainMessageChain(v)})
+							h.ReplyMessage(&messageStr, true, []interface{}{dos.NewPlainMessageChain(v)})
 						}
 					}
 				}
@@ -166,7 +174,7 @@ func (h HttpAdapter) CountMessage() (int, error) {
 	return int(result.(map[string]interface{})["data"].(float64)), nil
 }
 
-func (h HttpAdapter) FetchMessage(count int) ([]dos.Message, error) {
+func (h HttpAdapter) FetchMessage(count int) ([]map[string]interface{}, error) {
 	uri := "fetchMessage"
 	params := make(map[string]int)
 	params["count"] = count
@@ -175,12 +183,12 @@ func (h HttpAdapter) FetchMessage(count int) ([]dos.Message, error) {
 		return nil, err
 	}
 	result = result.(map[string]interface{})["data"]
-	var res []dos.Message
+	var res []map[string]interface{}
 	mapstructure.Decode(result, &res)
 	return res, err
 }
 
-func (h HttpAdapter) FetchLatestMessage(count int) ([]dos.Message, error) {
+func (h HttpAdapter) FetchLatestMessage(count int) ([]map[string]interface{}, error) {
 	uri := "fetchMessage"
 	params := make(map[string]int)
 	params["count"] = count
@@ -189,12 +197,12 @@ func (h HttpAdapter) FetchLatestMessage(count int) ([]dos.Message, error) {
 		return nil, err
 	}
 	result = result.(map[string]interface{})["data"]
-	var res []dos.Message
+	var res []map[string]interface{}
 	mapstructure.Decode(result, &res)
 	return res, err
 }
 
-func (h HttpAdapter) PeekMessage(count int) ([]dos.Message, error) {
+func (h HttpAdapter) PeekMessage(count int) ([]map[string]interface{}, error) {
 	uri := "fetchMessage"
 	params := make(map[string]int)
 	params["count"] = count
@@ -202,13 +210,13 @@ func (h HttpAdapter) PeekMessage(count int) ([]dos.Message, error) {
 	if err != nil {
 		return nil, err
 	}
-	var res []dos.Message
+	var res []map[string]interface{}
 	result = result.(map[string]interface{})["data"]
 	mapstructure.Decode(result, &res)
 	return res, err
 }
 
-func (h HttpAdapter) PeekLatestMessage(count int) ([]dos.Message, error) {
+func (h HttpAdapter) PeekLatestMessage(count int) ([]map[string]interface{}, error) {
 	uri := "fetchMessage"
 	params := make(map[string]int)
 	params["count"] = count
@@ -217,7 +225,7 @@ func (h HttpAdapter) PeekLatestMessage(count int) ([]dos.Message, error) {
 		return nil, err
 	}
 	result = result.(map[string]interface{})["data"]
-	var res []dos.Message
+	var res []map[string]interface{}
 	mapstructure.Decode(result, &res)
 	return res, err
 }

@@ -23,7 +23,6 @@ var (
 )
 
 type WebsocketSender struct {
-	sessionKey    string
 	URL           string
 	VerifyKey     string
 	QQ            int64
@@ -147,15 +146,21 @@ func (w WebsocketAdapter) UnmarshalMessage(message WebsocketResponse) error {
 
 	newMessage := dos.Message{}
 
-	mapstructure.Decode(data, &newMessage)
-	// 事件推送
+	err := mapstructure.Decode(data, &newMessage)
 
-	result := w.Sender.GetDealer().MessageDeal(newMessage)
+	var result interface{}
+
+	if err != nil {
+		// 事件推送
+		result = w.Sender.GetDealer().EventDeal(data)
+	} else {
+		result = w.Sender.GetDealer().MessageDeal(newMessage)
+	}
 
 	switch v := result.(type) {
 	case string:
 		// 直接回复消息
-		w.ReplyMessage(newMessage, true, []interface{}{dos.NewPlainMessageChain(v)})
+		w.ReplyMessage(&newMessage, true, []interface{}{dos.NewPlainMessageChain(v)})
 	}
 	return nil
 }
