@@ -148,7 +148,7 @@ func (m Message) GetPlainMessage() string {
 	content := ""
 	for _, c := range m.MessageChain {
 		if c["type"].(string) == Plain {
-			content += c["message"].(string)
+			content += c["text"].(string)
 		}
 	}
 	return content
